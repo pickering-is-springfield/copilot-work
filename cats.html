@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cats</title>
+  <style>
+    :root { --board-size: 480px; --cell-size: 48px; }
+    html,body{height:100%;margin:0;font-family:Arial, Helvetica, sans-serif;background:#fff}
+    header{background:#E55A45;color:#fff;text-align:center;padding:18px 0 18px 80px;font-weight:700;font-family:Georgia, 'Times New Roman', serif;position:relative}
+    .back-btn{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:#fff;color:#111;padding:6px 10px;border-radius:6px;text-decoration:none;font-weight:700;border:1px solid rgba(0,0,0,0.12)}
+    main{min-height:calc(100vh - 150px);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px}
+    .board-wrap{width:100%;max-width:var(--board-size);}
+    .board{width:100%;display:grid;border:4px solid #000;box-sizing:border-box}
+    .cell{width:var(--cell-size);height:var(--cell-size);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:calc(var(--cell-size) * 0.7);box-sizing:border-box;border:1px solid rgba(0,0,0,0.12)}
+    .cell.fixed{cursor:default}
+    .cell.conflict{outline:3px solid rgba(220,30,30,0.85)}
+    .cat{pointer-events:none}
+    .forbid{color:#111;font-weight:800;font-size:calc(var(--cell-size) * 0.6);pointer-events:none}
+    .controls{margin-top:12px;display:flex;gap:10px;justify-content:center}
+    button{padding:8px 14px;font-size:16px;border-radius:6px;border:1px solid #888;background:#fff;cursor:pointer}
+    .message{margin-top:12px;font-weight:700;font-family:Georgia, 'Times New Roman', serif}
+    /* small screens: remove side margins and scale board */
+    @media (max-width:520px){:root{--board-size:92vw}}
+  </style>
+</head>
+<body>
+  <header><a class="back-btn" href="index.html" aria-label="Home">Home 🏠</a>Cats</header>
+  <main>
+    <div class="board-wrap">
+      <div id="board" class="board" aria-label="cats board"></div>
+    </div>
+    <div class="controls">
+      <button id="resetBtn">Reset</button>
+      <button id="newBtn">New Game</button>
+    </div>
+    <div id="msg" class="message" aria-live="polite"></div>
+  </main>
+
+  <script>
+    // Cats game: randomized NxN (N random 8-12), use N-queens solution and color regions seeded at solution cells.
+
+    // Utilities
+    function randint(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+
+    // Solve N-queens (returns one solution: array col per row)
+    function solveNQueensOne(N){
+      const cols=new Set(), d1=new Set(), d2=new Set();
+      const sol=[]; let found=false;
+      function back(r){
+        if(found) return;
+        if(r===N){ found=true; return; }
+        for(let c=0;c<N;c++){
+          if(cols.has(c)||d1.has(r-c)||d2.has(r+c)) continue;
+          cols.add(c); d1.add(r-c); d2.add(r+c); sol[r]=c;
+          back(r+1);
+          if(found) return;
+          cols.delete(c); d1.delete(r-c); d2.delete(r+c);
+        }
+      }
+      back(0);
+      return found?sol:null;
+    }
+
+    // Build color regions seeded from solution cells
+    function buildRegions(N, solution){
+      const total=N*N;
+      const regionId=new Array(N).fill(0).map(()=>new Array(N).fill(-1));
+      const colors=[];
+      // generate N distinct color hexes
+      for(let i=0;i<N;i++){
+        const h = Math.floor(360 * i / N);
+        colors.push(`hsl(${h}deg 80% 65%)`);
+      }
+      // seeds: at solution positions (row r, col solution[r]) assign unique region
+      const q=[];
+      for(let r=0;r<N;r++){
+        const c=solution[r]; regionId[r][c]=r; q.push([r,c,r]);
+      }
+      // randomize expansion order
+      while(q.length){
+        // pick random index from queue
+        const idx = Math.floor(Math.random()*q.length);
+        const [r,c,id] = q.splice(idx,1)[0];
+        // try neighbors in random order
+        const neigh = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
+        for(const nb of shuffle(neigh)){
+          const [nr,nc]=nb;
+          if(nr<0||nr>=N||nc<0||nc>=N) continue;
+          if(regionId[nr][nc]===-1){ regionId[nr][nc]=id; q.push([nr,nc,id]); }
+        }
+      }
+      return {regionId, colors};
+    }
+
+    function shuffle(a){
+      const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr;
+    }
+
+    // Game state
+    let N, solution, regions, startCats, placedCats, forbidden;
+
+    const boardEl=document.getElementById('board');
+    const msg=document.getElementById('msg');
+    const resetBtn=document.getElementById('resetBtn');
+    const newBtn=document.getElementById('newBtn');
+
+    function makeNewGame(){
+      // 1. choose N
+      N = randint(8,12);
+      solution = solveNQueensOne(N);
+      if(!solution){ msg.textContent='Failed generating solution.'; return; }
+      regions = buildRegions(N, solution);
+
+      // compute sizing
+      const wrap = document.querySelector('.board-wrap');
+      const max = Math.min(parseInt(getComputedStyle(wrap).maxWidth)||480, Math.floor(window.innerWidth*0.92));
+      const boardSize = Math.max(240, max);
+      const cellSize = Math.floor(boardSize / N);
+      document.documentElement.style.setProperty('--board-size', boardSize+'px');
+      document.documentElement.style.setProperty('--cell-size', cellSize+'px');
+
+      // build board grid
+      boardEl.innerHTML='';
+      boardEl.style.gridTemplateColumns = `repeat(${N}, ${cellSize}px)`;
+      boardEl.style.gridTemplateRows = `repeat(${N}, ${cellSize}px)`;
+
+      // reveal some clues from solution
+      const clues = Math.max(1, Math.floor(N/4));
+      const clueRows = shuffle([...Array(N).keys()]).slice(0,clues);
+      startCats = new Set();
+      for(const r of clueRows){ startCats.add(r+','+solution[r]); }
+
+      placedCats = new Set(startCats);
+      forbidden = new Set();
+
+      // render cells
+      for(let r=0;r<N;r++){
+        for(let c=0;c<N;c++){
+          const cell=document.createElement('div');
+          cell.className='cell';
+          cell.dataset.r=r; cell.dataset.c=c; // store
+          // background by region
+          const rid = regions.regionId[r][c];
+          cell.style.background = regions.colors[rid];
+          // border to emulate board outline - thin
+          cell.style.boxSizing='border-box';
+          // fixed clue?
+          if(startCats.has(r+','+c)){
+            cell.classList.add('fixed');
+            cell.innerHTML='<span class="cat">🐱</span>';
+            cell.setAttribute('aria-label','fixed cat');
+          }
+          cell.addEventListener('click',onCellClick);
+          boardEl.appendChild(cell);
+        }
+      }
+      validateAndRender();
+      msg.textContent = '';
+    }
+
+    function onCellClick(e){
+      const el=e.currentTarget;
+      if(el.classList.contains('fixed')) return; // cannot change clues
+      const r=Number(el.dataset.r), c=Number(el.dataset.c);
+      const key = r+','+c;
+      // cycle: empty -> X (forbidden) -> cat -> empty
+      if(placedCats.has(key)){
+        // cat -> empty
+        placedCats.delete(key);
+      } else if(forbidden.has(key)){
+        // X -> cat
+        forbidden.delete(key);
+        placedCats.add(key);
+      } else {
+        // empty -> X
+        forbidden.add(key);
+      }
+      validateAndRender();
+    }
+
+    function validateAndRender(){
+      // clear conflicts
+      Array.from(boardEl.children).forEach(cell=>cell.classList.remove('conflict'));
+      // parse placed cats into array of coords
+      const cats = Array.from(placedCats).map(s=>s.split(',').map(Number));
+      // check conflicts: rows, cols, diagonals, same region color
+      const conflicts = new Set();
+      for(let i=0;i<cats.length;i++){
+        for(let j=i+1;j<cats.length;j++){
+          const [r1,c1]=cats[i], [r2,c2]=cats[j];
+          if(r1===r2 || c1===c2 || Math.abs(r1-r2)===Math.abs(c1-c2) || regions.regionId[r1][c1]===regions.regionId[r2][c2]){
+            conflicts.add(r1+','+c1); conflicts.add(r2+','+c2);
+          }
+        }
+      }
+      // apply conflicts visual
+      for(const cell of boardEl.children){
+        const key = cell.dataset.r+','+cell.dataset.c;
+        if(conflicts.has(key)) cell.classList.add('conflict');
+      }
+      // render cats and forbidden marks (preserve fixed clues)
+      for(const cell of boardEl.children){
+        const key = cell.dataset.r+','+cell.dataset.c;
+        if(cell.classList.contains('fixed')) continue; // fixed already has cat
+        if(placedCats.has(key)) cell.innerHTML='<span class="cat">🐱</span>';
+        else if(forbidden.has(key)) cell.innerHTML='<span class="forbid">X</span>';
+        else cell.innerHTML='';
+      }
+
+      // check win: number of cats == N and no conflicts and each row has exactly 1
+      let win=false;
+      if(cats.length===N && conflicts.size===0){
+        // ensure one per row
+        const rows=new Set(cats.map(x=>x[0]));
+        if(rows.size===N) win=true;
+      }
+      if(win){ msg.textContent='You win! 🎉'; }
+      else{ msg.textContent=''; }
+    }
+
+    // reset to starting clues
+    function resetGame(){
+      placedCats = new Set(startCats);
+      forbidden = new Set();
+      // re-render board cells
+      for(const cell of boardEl.children){
+        const key = cell.dataset.r+','+cell.dataset.c;
+        if(cell.classList.contains('fixed')) { cell.innerHTML='<span class="cat">🐱</span>'; }
+        else { cell.innerHTML=''; }
+        cell.classList.remove('conflict');
+      }
+      msg.textContent='';
+    }
+
+    // New game button
+    newBtn.addEventListener('click', ()=>{ makeNewGame(); });
+    resetBtn.addEventListener('click', ()=>{ resetGame(); validateAndRender(); });
+
+    // init on load
+    makeNewGame();
+
+    // resize handler to recompute cell sizes on orientation change
+    window.addEventListener('resize', ()=>{
+      // recompute cell size conservatively
+      const wrap = document.querySelector('.board-wrap');
+      const max = Math.min(parseInt(getComputedStyle(wrap).maxWidth)||480, Math.floor(window.innerWidth*0.92));
+      const boardSize = Math.max(240, max);
+      const cellSize = Math.floor(boardSize / N);
+      document.documentElement.style.setProperty('--board-size', boardSize+'px');
+      document.documentElement.style.setProperty('--cell-size', cellSize+'px');
+      boardEl.style.gridTemplateColumns = `repeat(${N}, ${cellSize}px)`;
+      boardEl.style.gridTemplateRows = `repeat(${N}, ${cellSize}px)`;
+    });
+
+  </script>
+</body>
+</html>
