@@ -1,8 +1,7 @@
 ---
-layout: sophs
-title: RPS
+layout: sohps
+title: Try this!
 ---
-
 <p>Which one will it be?</p>
 
 <a href="#" onclick="playRoshambo('rock')">rock</a>
