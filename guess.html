@@ -1,105 +1,236 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Guess the Number</title>
-  <style>
-    html,body{height:100%;margin:0;font-family:Arial, Helvetica, sans-serif;background:#fff}
-    header{background:#1B12FF;color:#fff;padding:12px 16px 12px 90px;font-weight:700;position:relative}
-    .home-btn{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:#fff;color:#111;padding:6px 10px;border-radius:6px;text-decoration:none;border:1px solid rgba(0,0,0,0.12)}
-    .container{display:flex;gap:18px;align-items:flex-start;justify-content:center;padding:28px;max-width:980px;margin:0 auto}
-    .left{flex:1;min-width:220px;display:flex;flex-direction:column;align-items:center}
-    .cat-box{width:220px;height:220px;border-radius:12px;background:#ffe;display:flex;align-items:center;justify-content:center;position:relative}
-    .cat-emoji{font-size:96px;line-height:1}
-    .bubble{position:absolute;right:-20px;top:10px;background:#fff;border:2px solid #000;padding:12px 16px;border-radius:12px;font-weight:700;min-width:90px;text-align:center}
-    .right{flex:1;min-width:220px;display:flex;flex-direction:column;align-items:center}
-    input[type=number]{width:160px;padding:10px;font-size:18px;border:1px solid #ccc;border-radius:8px;text-align:center}
-    .try-btn{margin-top:10px;padding:8px 14px;font-size:16px;border-radius:6px;border:1px solid #888;background:#fff;cursor:pointer}
-    .message{margin-top:12px;font-weight:700}
-    .score{margin-top:12px;display:flex;gap:12px}
-    .win{color:#2e7d32;font-weight:700}
-    .loss{color:#c62828;font-weight:700}
-    @media (max-width:720px){.container{flex-direction:column;align-items:center}.bubble{position:static;margin-top:12px;}.cat-emoji{font-size:64px}}
-  </style>
-</head>
-<body>
-  <header>
-    <a class="home-btn" href="index.html">Home 🏠</a>
-    Guess the Number
-  </header>
+---
+layout: sohps
+title: Guess the Number
+---
 
-  <div class="container">
-    <div class="left">
-      <div class="cat-box">
-        <div class="cat-emoji" aria-hidden="true">🐱</div>
-        <div id="bubble" class="bubble" aria-live="polite" style="display:none">?</div>
+<section class="guess-game" aria-labelledby="guess-title">
+  <h1 id="guess-title">Guess the Number</h1>
+  <p class="guess-help">Pick a number from 1 to 100. Submit once to see if you guessed right.</p>
+
+  <div class="guess-grid">
+    <div class="guess-left">
+      <div class="guess-cat-box">
+        <div class="guess-cat" aria-hidden="true">🐱</div>
+        <div id="bubble" class="guess-bubble" aria-live="polite" hidden>?</div>
       </div>
     </div>
 
-    <div class="right">
-      <div>
-        <label for="guessInput">Enter your guess (1-100)</label><br>
-        <input id="guessInput" type="number" min="1" max="100" autocomplete="off" />
-      </div>
-      <button id="submitBtn" class="try-btn">Submit</button>
-      <button id="againBtn" class="try-btn" style="display:none;margin-top:8px;">Try Again</button>
-      <div id="result" class="message" aria-live="polite"></div>
-      <div class="score">
-        <div id="wins" class="win">Wins: 0</div>
-        <div id="losses" class="loss">Losses: 0</div>
+    <div class="guess-right">
+      <label for="guessInput">Enter your guess (1-100)</label>
+      <input id="guessInput" type="number" min="1" max="100" autocomplete="off">
+      <button id="submitBtn" class="guess-btn" type="button">Submit</button>
+      <button id="againBtn" class="guess-btn" type="button" hidden>Try Again</button>
+      <div id="result" class="guess-result" aria-live="polite"></div>
+
+      <div class="guess-score">
+        <div id="wins" class="guess-win">Wins: 0</div>
+        <div id="losses" class="guess-loss">Losses: 0</div>
       </div>
     </div>
   </div>
+</section>
 
-  <script>
-    let target = randint(1,100);
-    const bubble = document.getElementById('bubble');
-    const input = document.getElementById('guessInput');
-    const submitBtn = document.getElementById('submitBtn');
-    const againBtn = document.getElementById('againBtn');
-    const result = document.getElementById('result');
-    const winsEl = document.getElementById('wins');
-    const lossesEl = document.getElementById('losses');
+<style>
+  .guess-game {
+    max-width: 980px;
+    margin: 0 auto;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+  }
 
-    let wins = 0, losses = 0;
+  .guess-game h1 {
+    margin: 0 0 8px;
+    font: 700 38px/1.05 Georgia, "Times New Roman", serif;
+  }
 
-    function randint(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+  .guess-help {
+    margin: 0 0 18px;
+    font-size: 16px;
+  }
 
-    function reveal(){
-      bubble.style.display='block';
-      bubble.textContent = 'I was thinking of ' + target;
-      againBtn.style.display='inline-block';
+  .guess-grid {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .guess-left,
+  .guess-right {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .guess-left {
+    display: flex;
+    justify-content: center;
+  }
+
+  .guess-cat-box {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    border-radius: 12px;
+    background: #fff6cf;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .guess-cat {
+    font-size: 96px;
+    line-height: 1;
+  }
+
+  .guess-bubble {
+    position: absolute;
+    right: -20px;
+    top: 10px;
+    min-width: 90px;
+    padding: 10px 14px;
+    border: 2px solid #000;
+    border-radius: 12px;
+    background: #fff;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .guess-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .guess-right label {
+    font-weight: 700;
+  }
+
+  #guessInput {
+    width: 170px;
+    padding: 10px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .guess-btn {
+    padding: 8px 14px;
+    border: 1px solid #777;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .guess-result {
+    min-height: 26px;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+
+  .guess-score {
+    margin-top: 2px;
+    display: flex;
+    gap: 14px;
+  }
+
+  .guess-win {
+    color: #2e7d32;
+    font-weight: 700;
+  }
+
+  .guess-loss {
+    color: #c62828;
+    font-weight: 700;
+  }
+
+  @media (max-width: 760px) {
+    .guess-game h1 {
+      font-size: 32px;
     }
 
-    function submitGuess(){
-      const val = Number(input.value);
-      if(!val || val<1 || val>100){ result.textContent = 'Please enter a number 1–100'; return; }
+    .guess-help {
+      font-size: 15px;
+    }
+
+    .guess-grid {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .guess-bubble {
+      position: static;
+      margin-top: 12px;
+    }
+
+    .guess-cat {
+      font-size: 72px;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    function randint(a, b) {
+      return Math.floor(Math.random() * (b - a + 1)) + a;
+    }
+
+    const bubble = document.getElementById("bubble");
+    const input = document.getElementById("guessInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const againBtn = document.getElementById("againBtn");
+    const result = document.getElementById("result");
+    const winsEl = document.getElementById("wins");
+    const lossesEl = document.getElementById("losses");
+
+    let target = randint(1, 100);
+    let wins = 0;
+    let losses = 0;
+
+    function reveal() {
+      bubble.hidden = false;
+      bubble.textContent = "I was thinking of " + target;
+      againBtn.hidden = false;
+    }
+
+    function submitGuess() {
+      const value = Number(input.value);
+      if (!value || value < 1 || value > 100) {
+        result.textContent = "Please enter a number from 1 to 100.";
+        result.style.color = "#111";
+        return;
+      }
+
       reveal();
-      if(val === target){
+      if (value === target) {
         wins += 1;
-        winsEl.textContent = 'Wins: ' + wins;
-        result.textContent = 'Correct!';
-        result.style.color = '#2e7d32';
+        winsEl.textContent = "Wins: " + wins;
+        result.textContent = "Correct!";
+        result.style.color = "#2e7d32";
       } else {
         losses += 1;
-        lossesEl.textContent = 'Losses: ' + losses;
-        result.textContent = 'Wrong — try again.';
-        result.style.color = '#c62828';
+        lossesEl.textContent = "Losses: " + losses;
+        result.textContent = "Wrong. Try again.";
+        result.style.color = "#c62828";
       }
     }
 
-    submitBtn.addEventListener('click', ()=>{ submitGuess(); });
-    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ submitGuess(); } });
-
-    againBtn.addEventListener('click', ()=>{
-      target = randint(1,100);
-      bubble.style.display='none';
-      input.value='';
-      againBtn.style.display='none';
-      result.textContent='';
+    function resetRound() {
+      target = randint(1, 100);
+      bubble.hidden = true;
+      bubble.textContent = "?";
+      againBtn.hidden = true;
+      result.textContent = "";
+      input.value = "";
       input.focus();
+    }
+
+    submitBtn.addEventListener("click", submitGuess);
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") submitGuess();
     });
-  </script>
-</body>
-</html>
+    againBtn.addEventListener("click", resetRound);
+  })();
+</script>
